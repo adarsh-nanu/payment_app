@@ -8,17 +8,29 @@
 void initShutDown( int signal ){
     TransactionService& service = TransactionService::getInstance();
     ConnectionPool& connectionPool = ConnectionPool::getInstance();
-    std::cout<<"Received signal "<<signal<<std::endl;
+    oss.str("");
+    oss<<"Received signal "<<signal;
+    logger.log(oss.str());
     write(STDOUT_FILENO, "SIGNAL RECEIVED\n", 16);
     if( signal == SIGUSR1 ){
-        std::cout<<"Trigerring service shutdown"<<std::endl;
+        oss.str("");
+        oss<<"Trigerring service shutdown";
+        logger.log(oss.str());
         service.Shutdown();
-        std::cout<<"Service shutdown triggered. Waiting for ongoing transactions to complete..."<<std::endl;
+        oss.str("");
+        oss<<"Service shutdown triggered. Waiting for ongoing transactions to complete...";
+        logger.log(oss.str());
         connectionPool.Shutdown();
-        std::cout<<"Connection pool shutdown triggered. Waiting for ongoing connections to complete..."<<std::endl;
-        std::cout<<"Stopping.."<<std::endl;
+        oss.str("");
+        oss<<"Connection pool shutdown triggered. Waiting for ongoing connections to complete...";
+        logger.debug(oss.str());
+        oss.str("");
+        oss<<"Stopping..";
+        logger.debug(oss.str());
     }
-    std::cout<<"Stopped"<<std::endl;
+    oss.str("");
+    oss<<"Stopped";
+    logger.log(oss.str());
     drogon::app().quit();
     logger.Shutdown();
 }
@@ -26,12 +38,11 @@ void initShutDown( int signal ){
 void Application::Initialize(){
     logger.Initialize("/Users/adarshnanu/drogon/build/payment_app/build/app.log", DEBUG);
     logger.log("..Initialized");
-    if( connectionPool.Initialize(2) < 0 ){
-        std::cerr<<"Failed to initialize connection pool: "<< connectionPool.getErrorMessage() <<std::endl;
+    if( connectionPool.Initialize(1) < 0 ){
+        std::cerr<<"Failed to initialize connection pool: "<< connectionPool.getErrorMessage() ;
         throw std::runtime_error("Failed to initialize connection pool");
     }   
     
     signal( SIGUSR1, initShutDown );
     service.Initialize();
-
 }

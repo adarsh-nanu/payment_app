@@ -1,6 +1,8 @@
 #include "TransactionController.h"
 #include <libpq-fe.h>
-
+#include "../util/Logger.h"
+#include "../exceptions/DBPoolTimeoutException.h"
+#include "../exceptions/QueueLimitExceedException.h"
 
 void sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket){
 	Json::Value resp;
@@ -113,9 +115,20 @@ void TransactionController::createTransaction(
 	}
 
 	try{
-		std::cout<<"Prepare to create record in database"<<std::endl;
+		oss.str("");
+    	oss<<"Prepare to create record in database";
+		logger.debug(oss.str());
 		service.createTransaction(obj);
-	}catch(const std::exception& err ){
+	}
+	catch(const DBPoolTimeoutException& err){
+		responsePacket.httpStatus = k503ServiceUnavailable; 
+		responsePacket.success = false;
+		responsePacket.message = "DB connection pool timout";
+		responsePacket.error_code = "DB_POOL_ERROR";
+		sendResponse(callback, responsePacket);
+		return;
+	}
+	catch(const std::exception& err ){
 		responsePacket.httpStatus = k500InternalServerError; 
 		responsePacket.success = false;
 		responsePacket.message = "DB connection failed";
@@ -124,14 +137,24 @@ void TransactionController::createTransaction(
 		return;
 	}
 	try{
-		std::cout<<"Prepare to enqueue record for processing"<<std::endl;
+		oss.str("");
+		oss<<"Prepare to enqueue record for processing";
+		logger.debug(oss.str());
 		service.enqueue(obj);
 	}
-	catch(const std::exception &e){
+	catch(const QueueLimitExceedException &e){
 		responsePacket.httpStatus = k503ServiceUnavailable; 
 		responsePacket.success = false;
 		responsePacket.message = "Unable to accept new messages";
 		responsePacket.error_code = "BACKPRESSURE_ACTIVE";
+		sendResponse(callback, responsePacket);
+		return;
+	}
+	catch(const std::exception &e){
+		responsePacket.httpStatus = k503ServiceUnavailable; 
+		responsePacket.success = false;
+		responsePacket.message = "Unable to accept request";
+		responsePacket.error_code = "SYSTEM_MALFUNCTION";
 		sendResponse(callback, responsePacket);
 		return;
 	}

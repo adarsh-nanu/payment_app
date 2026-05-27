@@ -12,7 +12,6 @@ class ConnectionPoolWrapper{
     public:
     ConnectionPoolWrapper(): pool{ConnectionPool::getInstance()}{
         conn = pool.getConnection();
-        std::cout<<"ConnectionPoolWrapper: "<<std::endl;
     }
     PGconn* get(); 
     ~ConnectionPoolWrapper();

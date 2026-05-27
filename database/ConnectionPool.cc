@@ -1,6 +1,9 @@
 #include"ConnectionPool.h"
 #include <iostream>
 #include"../util/Logger.h"
+#include <chrono>
+#include "../exceptions/DBPoolTimeoutException.h"
+using namespace std::chrono_literals;
 
 ConnectionPool& ConnectionPool::getInstance(){
     static ConnectionPool instance;
@@ -18,7 +21,7 @@ ConnectionPool::~ConnectionPool(){
         connections.pop();
         PQfinish(conn);
         oss.str("");
-        oss<<"Connection closed"<<std::endl;
+        oss<<"Connection closed";
         logger.log(oss.str());
     }
 }
@@ -39,7 +42,9 @@ int ConnectionPool::Initialize(int poolSize){
             oss<<"Connection "<< i <<" initialized and added to pool";
             logger.debug( oss.str());
         } catch( const std::exception& e ){
-            std::cerr << "Error occurred while initializing connection: " << e.what() << std::endl;
+            oss.str("");
+            oss<<"Error occurred while initializing connection: " << e.what();
+            logger.error(oss.str());
             return -1;
         }
     }
@@ -48,14 +53,21 @@ int ConnectionPool::Initialize(int poolSize){
 
 PGconn* ConnectionPool::getConnection(){
     std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [this] {
+    if( !cv.wait_for(lock, 2s, [this] {
         return (!connections.empty() || stop);
-    });
+    }) ){
+        //return nullptr;
+        throw DBPoolTimeoutException("The pool cannot provide a connection at this point");
+    }
     if( stop ){
-        std::cout<<"Connection pool is shutting down. No more connections can be provided."<<std::endl;
+        oss.str("");
+        oss<<"Connection pool is shutting down. No more connections can be provided.";
+        logger.log(oss.str());
         return nullptr;
     }
-    std::cout<<"Connection provided from pool. Remaining connections "<< connections.size() - 1 <<std::endl;
+    oss.str("");
+    oss<<"Connection provided from pool. Remaining connections "<< connections.size() - 1 ;
+    logger.debug(oss.str());
     PGconn* conn = connections.front();
     connections.pop();
     return conn;
@@ -65,7 +77,9 @@ void ConnectionPool::releaseConnection(PGconn* conn){
     std::lock_guard<std::mutex> lock(mtx);
     connections.push(conn);
     cv.notify_one();
-    std::cout<<"Connection released back to pool. Available connections "<< connections.size() <<std::endl;
+    oss.str("");
+    oss<<"Connection released back to pool. Available connections "<< connections.size() ;
+    logger.debug(oss.str());
 }
 
 std::string ConnectionPool::getErrorMessage(){

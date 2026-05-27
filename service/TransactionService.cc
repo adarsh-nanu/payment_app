@@ -6,12 +6,17 @@
 #include"../database/ConnectionPoolWrapper.h"
 #include <chrono>
 #include"../exceptions/PaymentException.h"
+#include"../exceptions/QueueLimitExceedException.h"
+#include "../util/Logger.h"
+
 #define MAX_MSG_IN_QUEUE 5
 
 using namespace std::chrono_literals;
 
 TransactionService::TransactionService(int workerCount) : WorkerCount{workerCount}{
-    std::cout<<"TransactionService: creating "<< WorkerCount<<" workers" <<std::endl;
+    oss.str("");
+    oss<<"TransactionService: creating "<< WorkerCount<<" workers" ;
+    logger.debug(oss.str());
 };
 
 void TransactionService::Shutdown(){
@@ -24,18 +29,23 @@ void TransactionService::Shutdown(){
 }
 
 void TransactionService::Initialize() {
-    std::cout<<"----Start-----"<<std::endl;
+    std::cout<<"----Start-----";
     for (int i = 0; i < WorkerCount; i++) {
         workers.emplace_back(&TransactionService::workerThread, this);
-        std::cout<<"Worker thread "<< i <<" started"<<std::endl;
+        oss.str("");
+        oss<<"Worker thread "<< i <<" started";
+        logger.log(oss.str());
     }
     workers.emplace_back(&TransactionService::retryWorkerThread, this);
-    std::cout<<"Retry worker thread started"<<std::endl;
-
+    oss.str("");
+    oss<<"Retry worker thread started";
+    logger.log(oss.str());
 }
 
 TransactionService::~TransactionService() {
-    std::cout<<"Stopping worker threads"<<std::endl;
+    oss.str("");
+    oss<<"Stopping worker threads";
+    logger.log(oss.str());
     Shutdown();
     for (auto &t : workers) {
         if (t.joinable())
@@ -47,12 +57,16 @@ void TransactionService::createTransaction(const TransactionJob& obj) {
     //PGconn* conn = connectionPool.getConnection();
     ConnectionPoolWrapper conn;
     if ( conn.get() == nullptr ){
-        std::cout<<"Null DB handle. "<<std::endl;
+        oss.str("");
+        oss<<"Null DB handle. ";
+        logger.error(oss.str());
         throw std::system_error(errno, std::generic_category(), "Database connection error");
     }
     if ( PQstatus( conn.get() ) != CONNECTION_OK )
     {
-        std::cout<<"Invalid DB handle. "<<std::endl;
+        oss.str("");
+        oss<<"Invalid DB handle. ";
+        logger.error(oss.str());
         //connectionPool.releaseConnection(conn);
         throw std::system_error(errno, std::generic_category(), "Database connection error");
     }
@@ -75,35 +89,45 @@ void TransactionService::createTransaction(const TransactionJob& obj) {
     NULL,
     0           // text format
     );
-    std::cout<<"Executed. check for status"<<std::endl;
+    oss.str("");
+    oss<<"Executed. Check for status";
+    logger.debug(oss.str());
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
         const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
         if( sqlstate && std::strcmp(sqlstate, "23505" ) != 0 ){
             const char* sqlerrm = PQresultErrorMessage( res);
             if( sqlerrm)
-                std::cout<<sqlerrm<<std::endl;
+                std::cout<<sqlerrm;
             const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
             if( sqlstate)
-                std::cout<<sqlstate<<std::endl;
+                std::cout<<sqlstate;
                 errno = 123;
             PQclear(res);
             //connectionPool.releaseConnection(conn);
             throw std::system_error(errno, std::generic_category(), "Database connection error");
         }
     }
-    std::cout<<"Execution complete"<<std::endl;
+    oss.str("");
+    oss<<"Execution complete";
+    logger.debug(oss.str());
     PQclear(res);
-    std::cout<<"Release resources"<<std::endl;
+    oss.str("");
+    oss<<"Release resources";
+    logger.debug(oss.str());
     //connectionPool.releaseConnection(conn);
 }	
 
 void TransactionService::enqueue(const TransactionJob& obj) {
     std::lock_guard<std::mutex> lock(mtx);
-    std::cout<<"Messages in the queue: "<< jobQueue.size() <<std::endl;
+    oss.str("");
+    oss<<"Messages in the queue: "<< jobQueue.size() ;
+    logger.debug(oss.str());
     if( jobQueue.size() >= MAX_MSG_IN_QUEUE ){
-        std::cout<<"Cannot accept new messages."<<std::endl;
-        throw PaymentException( std::string( "Cannot accept more messages" ), false, std::string( "Q_MAX_THRESHOLD_HIT" ) );
+        oss.str("");
+        oss<<"Cannot accept new messages.";
+        logger.log(oss.str());
+        throw QueueLimitExceedException( std::string( "Cannot accept more messages" ) );
     }
     jobQueue.push(obj);
     cv.notify_one();
@@ -115,132 +139,173 @@ void TransactionService::workerThread() {
     //std::this_thread::sleep_for(std::chrono::seconds(100));
     while (true) {
         try{
-        job = {};
-        std::cout<<"Worker thread waiting for job"<<std::endl;
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-
-            cv.wait(lock, [this] {
-                return stop || !jobQueue.empty();
-            });
-
-            if (stop && jobQueue.empty())
+            job = {};
+            oss.str("");
+            oss<<"Worker thread waiting for job";
+            logger.debug(oss.str());
             {
-                std::cout<<"Worker thread stopping"<<std::endl;
-                return;
+                std::unique_lock<std::mutex> lock(mtx);
+
+                cv.wait(lock, [this] {
+                    return stop || !jobQueue.empty();
+                });
+
+                if (stop && jobQueue.empty())
+                {
+                    oss.str("");
+                    oss<<"Worker thread stopping";
+                    logger.log(oss.str());
+                    return;
+                }
+
+                job = jobQueue.front();
+                jobQueue.pop();
             }
 
-            job = jobQueue.front();
-            jobQueue.pop();
-        }
-
-        //PGconn* conn = connectionPool.getConnection();
-        ConnectionPoolWrapper conn;
-        if (conn.get() == nullptr){
-            throw std::system_error(errno, std::generic_category(), "Database connection error");
-        }
-        if (PQstatus(conn.get()) == CONNECTION_OK) {
-            std::cout<<"Databse connected"<<std::endl;
-            const char* params[1] = { job.idempotent_id.c_str() };
-            std::cout<<"Trying to own the job "<< job.idempotent_id <<std::endl;
-            PGresult* res = PQexecParams(
-                conn.get(),
-                "UPDATE transactions SET state='PROCESSING', updated_at = now() WHERE idempotency_key=$1 and state = 'PENDING' returning idempotency_key",
-                1,
-                NULL,
-                params,
-                NULL,
-                NULL,
-                0
-            );
-            std::cout<<PQresultStatus(res) <<std::endl;
-            if( PQresultStatus(res) != PGRES_TUPLES_OK ){ 
-                const char* sqlerrm = PQresultErrorMessage( res);
-                if( sqlerrm)
-                    std::cout<<sqlerrm<<std::endl;
-                const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
-                if( sqlstate)
-                    std::cout<<sqlstate<<std::endl;
-                std::cout<<"worker db update failed "<<std::endl;
-                PQclear(res);
-                //connectionPool.releaseConnection(conn);
-                throw RetryableException("Worker db update failed", sqlstate ? sqlstate : "UNKNOWN");
-            }else{
-                std::cout<<"Check for ownership confirmation"<<std::endl;
-                int rows = PQntuples(res);
-                if( rows == 1){
-                    std::cout<<"Job owned"<<std::endl;
-                }else{
-                    std::cout<<"Unable to own the job. Return"<<std::endl;
+            //PGconn* conn = connectionPool.getConnection();
+            ConnectionPoolWrapper conn;
+            if (conn.get() == nullptr){
+                throw std::system_error(errno, std::generic_category(), "Database connection error");
+            }
+            if (PQstatus(conn.get()) == CONNECTION_OK) {
+                oss.str("");
+                oss<<"Databse connected";
+                logger.debug(oss.str());
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+                const char* params[1] = { job.idempotent_id.c_str() };
+                oss.str("");
+                oss<<"Trying to own the job "<< job.idempotent_id ;
+                logger.debug(oss.str());
+                PGresult* res = PQexecParams(
+                    conn.get(),
+                    "UPDATE transactions SET state='PROCESSING', updated_at = now() WHERE idempotency_key=$1 and state = 'PENDING' returning idempotency_key",
+                    1,
+                    NULL,
+                    params,
+                    NULL,
+                    NULL,
+                    0
+                );
+                std::cout<<PQresultStatus(res) ;
+                if( PQresultStatus(res) != PGRES_TUPLES_OK ){ 
+                    const char* sqlerrm = PQresultErrorMessage( res);
+                    if( sqlerrm)
+                        std::cout<<sqlerrm;
+                    const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
+                    if( sqlstate)
+                        std::cout<<sqlstate;
+                    oss.str("");
+                    oss<<"worker db update failed ";
+                    logger.error(oss.str());
                     PQclear(res);
                     //connectionPool.releaseConnection(conn);
-                    continue;
-                }
-            }
-            PQclear(res);
-        }else{
-            std::cout<<"Unable to connect database"<<std::endl;
-            //connectionPool.releaseConnection(conn); 
-            throw RetryableException("Unable to connect database", "DB_CONNECTION_FAILED");
-        }
-
-        if (PQstatus(conn.get()) == CONNECTION_OK) {
-            const char* params[1] = { job.idempotent_id.c_str() };
-            std::cout<<"Updating job status "<< job.idempotent_id <<std::endl;
-            PGresult* res = PQexecParams(
-                conn.get(),
-                "UPDATE transactions SET state='SUCCESS', updated_at = now() WHERE idempotency_key=$1 and state = 'PROCESSING'",
-                1,
-                NULL,
-                params,
-                NULL,
-                NULL,
-                0
-            );
-            if( PQresultStatus(res) != PGRES_COMMAND_OK ){
-                const char* sqlerrm = PQresultErrorMessage( res);
-                if( sqlerrm)
-                    std::cout<<sqlerrm<<std::endl;
-                const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
-                if( sqlstate)
-                    std::cout<<sqlstate<<std::endl;
-                std::cout<<"worker db update failed "<<std::endl;
-                PQclear(res);
-                //connectionPool.releaseConnection(conn);
-                throw RetryableException("Worker db update failed", sqlstate ? sqlstate : "UNKNOWN");
-            }else{
-                std::cout<<"Check for update status"<<std::endl;
-                int rows = std::atoi(PQcmdTuples(res));
-                if( rows != 0){
-                    std::cout<<"Job updated"<<std::endl;
+                    throw RetryableException("Worker db update failed", sqlstate ? sqlstate : "UNKNOWN");
                 }else{
-                    std::cout<<"Job updated. This is not expected"<<std::endl;
+                    oss.str("");
+                    oss<<"Check for ownership confirmation";
+                    logger.debug(oss.str());
+                    int rows = PQntuples(res);
+                    if( rows == 1){
+                        oss.str("");
+                        oss<<"Job owned";
+                        logger.debug(oss.str());
+                    }else{
+                        oss.str("");
+                        oss<<"Unable to own the job. Return";
+                        logger.log(oss.str());
+                        PQclear(res);
+                        //connectionPool.releaseConnection(conn);
+                        continue;
+                    }
                 }
+                PQclear(res);
+            }else{
+                oss.str("");
+                oss<<"Unable to connect database";
+                logger.error(oss.str());
+                //connectionPool.releaseConnection(conn); 
+                throw RetryableException("Unable to connect database", "DB_CONNECTION_FAILED");
             }
-            PQclear(res);
-        }else{
-            std::cout<<"Unable to connect database"<<std::endl;
+
+            if (PQstatus(conn.get()) == CONNECTION_OK) {
+                const char* params[1] = { job.idempotent_id.c_str() };
+                oss.str("");
+                oss<<"Updating job status "<< job.idempotent_id ;
+                logger.debug(oss.str());
+                PGresult* res = PQexecParams(
+                    conn.get(),
+                    "UPDATE transactions SET state='SUCCESS', updated_at = now() WHERE idempotency_key=$1 and state = 'PROCESSING'",
+                    1,
+                    NULL,
+                    params,
+                    NULL,
+                    NULL,
+                    0
+                );
+                if( PQresultStatus(res) != PGRES_COMMAND_OK ){
+                    const char* sqlerrm = PQresultErrorMessage( res);
+                    if( sqlerrm)
+                        std::cout<<sqlerrm;
+                    const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
+                    if( sqlstate)
+                        std::cout<<sqlstate;
+                    oss.str("");
+                    oss<<"worker db update failed ";
+                    logger.error(oss.str());
+                    PQclear(res);
+                    //connectionPool.releaseConnection(conn);
+                    throw RetryableException("Worker db update failed", sqlstate ? sqlstate : "UNKNOWN");
+                }else{
+                    oss.str("");
+                    oss<<"Check for update status";
+                    logger.debug(oss.str());
+                    int rows = std::atoi(PQcmdTuples(res));
+                    if( rows != 0){
+                        oss.str("");
+                        oss<<"Job updated";
+                        logger.debug(oss.str());
+                    }else{
+                        oss.str("");
+                        oss<<"Job updated. This is not expected";
+                        logger.log(oss.str());
+                    }
+                }
+                PQclear(res);
+            }else{
+                oss.str("");
+                oss<<"Unable to connect database";
+                logger.error(oss.str());
+                //connectionPool.releaseConnection(conn);
+                throw RetryableException("Unable to connect database", "DB_CONNECTION_FAILED");  
+            }
+
             //connectionPool.releaseConnection(conn);
-            throw RetryableException("Unable to connect database", "DB_CONNECTION_FAILED");  
-        }
 
-        //connectionPool.releaseConnection(conn);
-
-        std::cout << "Processed: " << job.idempotent_id << std::endl;
+            oss.str("");
+            oss<< "Processed: " << job.idempotent_id;
+            logger.debug(oss.str());
         }
         catch( const RetryableException& e){
-            std::cout<<"Worker thread retryable exception "<< e.what() <<std::endl;
-            std::cout<<"Error code: "<< e.errorCode <<std::endl;
+            oss.str("");
+            oss<<"Worker thread retryable exception "<< e.what() ;
+            logger.error(oss.str());
+            oss.str("");
+            oss<<"Error code: "<< e.errorCode ;
+            logger.error(oss.str());
             setRetryFailedTransactions(job, e.what());
         }
         catch( const std::exception& e ){
-            std::cout<<"Worker thread exception "<< e.what() <<std::endl;
+            oss.str("");
+            oss<<"Worker thread exception "<< e.what() ;
+            logger.error(oss.str());
         }
     }
 }
 
 int TransactionService::getTransaction( std::string idempotency_id, std::string &status ){
-    std::cout<<"Getting transaction status for "<< idempotency_id <<std::endl;
+    oss.str("");
+            oss<<"Getting transaction status for "<< idempotency_id ;
+            logger.debug(oss.str());
     //PGconn* conn = connectionPool.getConnection();
     ConnectionPoolWrapper conn;
     if (conn.get() == nullptr){
@@ -263,13 +328,21 @@ int TransactionService::getTransaction( std::string idempotency_id, std::string 
     0);      /* ask for text results */
 
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        std::cout<<"Error occurred while fetching transaction status"<<std::endl;
+        oss.str("");
+        oss<<"Error occurred while fetching transaction status";
+        logger.error(oss.str());
         const char* sqlerrm = PQresultErrorMessage( res);
-        if( sqlerrm)
-            std::cout<<sqlerrm<<std::endl;
+        if( sqlerrm){
+            oss.str("");
+            oss<<sqlerrm;
+            logger.error(oss.str());
+        }
         const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
-        if( sqlstate)
-            std::cout<<sqlstate<<std::endl;
+        if( sqlstate){
+            oss.str("");
+            oss<<sqlstate;
+            logger.error(oss.str());
+        }
         PQclear(res);
         //connectionPool.releaseConnection(conn);
         status = "";
@@ -292,14 +365,16 @@ void TransactionService::retryWorkerThread(){
         try{
             job = {};
             // Implement retry logic for failed transactions if needed
-            //std::cout<<"Retry worker thread checking for failed transactions"<<std::endl;
+            //std::cout<<"Retry worker thread checking for failed transactions";
             //std::this_thread::sleep_for(std::chrono::seconds(10));
             {
                 std::unique_lock<std::mutex> lock(mtx);
                 cv.wait_for(lock, 10s, [this] { return stop.load();});
             }
             if(stop){
-                std::cout<<"Retry worker thread stopping"<<std::endl;
+                oss.str("");
+                oss<<"Retry worker thread stopping";
+                logger.log(oss.str());
                 return;
             }
             //PGconn* conn = connectionPool.getConnection();
@@ -322,28 +397,30 @@ void TransactionService::retryWorkerThread(){
                     NULL,
                     0
                 );
-                //std::cout<<"Query exec status "<<PQresultStatus(res) <<std::endl;
+                //std::cout<<"Query exec status "<<PQresultStatus(res) ;
                 if( PQresultStatus(res) != PGRES_TUPLES_OK ){ 
                     const char* sqlerrm = PQresultErrorMessage( res);
                     if( sqlerrm)
-                        std::cout<<sqlerrm<<std::endl;
+                        std::cout<<sqlerrm;
                     const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
                     if( sqlstate)
-                        std::cout<<sqlstate<<std::endl;
-                    std::cout<<"Retry worker db update failed "<<std::endl;
+                        std::cout<<sqlstate;
+                    oss.str("");
+                    oss<<"Retry worker db update failed ";
+                    logger.error(oss.str());
                     PQclear(res);
                     //connectionPool.releaseConnection(conn);
                     throw RetryableException("Retry worker db update failed", sqlstate ? sqlstate : "UNKNOWN");
                 } else {
-                    //std::cout<<"Retry worker db update success "<<std::endl;
+                    //std::cout<<"Retry worker db update success ";
                     int rows = PQntuples(res);
-                    //std::cout<<"Retry worker thread found "<< rows <<" failed transactions to retry"<<std::endl;
+                    //std::cout<<"Retry worker thread found "<< rows <<" failed transactions to retry";
                     for( int i = 0; i < rows; i++ ){
                         job.idempotent_id = PQgetvalue(res, i, 0);
                         job.customerName = PQgetvalue(res, i, 1);
                         job.amount = std::stod(PQgetvalue(res, i, 2));
                         int retryCount = std::atoi(PQgetvalue(res, i, 3));
-                        //std::cout<<"Retrying job "<< job.idempotent_id <<" Retry count "<< retryCount <<std::endl;
+                        //std::cout<<"Retrying job "<< job.idempotent_id <<" Retry count "<< retryCount ;
                         enqueue(job);
                     }
                 }
@@ -351,22 +428,32 @@ void TransactionService::retryWorkerThread(){
                 //connectionPool.releaseConnection(conn.get());
             }
             else{
-                std::cout<<"Unable to connect database in retry worker"<<std::endl;
+                oss.str("");
+                oss<<"Unable to connect database in retry worker";
+                logger.error(oss.str());
                 //connectionPool.releaseConnection(conn);
                 throw RetryableException("Unable to connect database in retry worker", "DB_CONNECTION_FAILED");
             }
             //std::this_thread::sleep_for(std::chrono::seconds(10));
             if(stop){
-                std::cout<<"Retry worker thread stopping"<<std::endl;
+                oss.str("");
+                oss<<"Retry worker thread stopping";
+                logger.error(oss.str());
                 return; 
             }
         }catch( const RetryableException& e){
-            std::cout<<"Retry worker thread retryable exception "<< e.what() <<std::endl;
-            std::cout<<"Error code: "<< e.errorCode <<std::endl;
+            oss.str("");
+            oss<<"Retry worker thread retryable exception "<< e.what() ;
+            logger.error(oss.str());
+            oss.str("");
+            oss<<"Error code: "<< e.errorCode ;
+            logger.error(oss.str());
             setRetryFailedTransactions(job, e.what());
         }
         catch( const std::exception& e){
-            std::cout<<"Retry worker thread exception "<< e.what() <<std::endl;
+            oss.str("");
+            oss<<"Retry worker thread exception "<< e.what() ;
+            logger.error(oss.str());
         }
     }
 }
@@ -394,18 +481,28 @@ void TransactionService::setRetryFailedTransactions(const TransactionJob& obj , 
         );
         if( PQresultStatus(res) != PGRES_COMMAND_OK ){
             const char* sqlerrm = PQresultErrorMessage( res);
-            if( sqlerrm)                
-                std::cout<<sqlerrm<<std::endl;
+            if( sqlerrm){                
+                oss.str("");
+                oss<<sqlerrm;
+                logger.error(oss.str());
+            }
             const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
-            if( sqlstate)                
-                std::cout<<sqlstate<<std::endl;
-            std::cout<<"Set retry failed transactions db update failed for "<<obj.idempotent_id<<std::endl;
+            if( sqlstate){                
+                oss.str("");
+                oss<<sqlstate;
+                logger.error(oss.str());
+            }
+            oss.str("");
+            oss<<"Set retry failed transactions db update failed for "<<obj.idempotent_id;
+            logger.error(oss.str());
             PQclear(res);
         } else {
-            //std::cout<<"Set retry failed transactions db update success for "<<obj.idempotent_id<<std::endl;
+            //std::cout<<"Set retry failed transactions db update success for "<<obj.idempotent_id;
         }
     } else {
-        std::cout<<"Unable to connect database in set retry failed transactions"<<std::endl;
+        oss.str("");
+        oss<<"Unable to connect database in set retry failed transactions";
+        logger.error(oss.str());
     }
     //connectionPool.releaseConnection(conn);
 }

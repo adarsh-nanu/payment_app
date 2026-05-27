@@ -1,5 +1,6 @@
 #include "ConnectionPoolWrapper.h"
 #include <iostream>
+#include "../util/Logger.h"
 
 PGconn* ConnectionPoolWrapper::get(){
     return conn;
@@ -7,8 +8,5 @@ PGconn* ConnectionPoolWrapper::get(){
 ConnectionPoolWrapper::~ConnectionPoolWrapper(){
     if(conn){
         pool.releaseConnection(conn);
-        std::cout<<"ConnectionPoolWrapper: Connection released"<<std::endl;
-        //logger.log("hi");
-        //logger.debug("hello");
     }
 }

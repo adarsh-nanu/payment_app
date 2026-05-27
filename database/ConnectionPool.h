@@ -14,7 +14,6 @@ class ConnectionPool{
         std::queue<PGconn*> connections;
         std::mutex mtx;
         std::string lastErrorMessage;
-        //std::string lastErrorCode;
         std::condition_variable cv;
         std::atomic<bool> stop{false};
         
@@ -27,7 +26,6 @@ class ConnectionPool{
         PGconn* getConnection();
         void releaseConnection( PGconn* conn );
         std::string getErrorMessage();
-        //std::string getErrorCode();
         std::string className();
         void Shutdown();
 };

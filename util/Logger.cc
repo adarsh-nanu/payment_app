@@ -70,3 +70,23 @@ std::string Logger::getTimeStamp(){
     oss << "," << std::setfill('0') << std::setw(3) << ms.count();
     return oss.str();
 }
+
+void Logger::error( const char* data){
+    if( setmode >= LOG )
+    try{
+        std::lock_guard<std::mutex> lock(mtx);
+        logfile<<getTimeStamp()<<" [error] "<<data<<std::endl;
+    }catch(const std::exception& e){
+        std::cout<<"File write error"<<std::endl;
+    }
+}
+
+void Logger::error(const std::string& data){
+    if( setmode >= DEBUG )
+    try{
+        std::lock_guard<std::mutex> lock(mtx);
+        logfile<<getTimeStamp()<<" [eror] "<<data<<std::endl;
+    }catch(const std::exception& e){
+        std::cout<<"File write error"<<std::endl;
+    }
+}
