@@ -1,5 +1,8 @@
 #include <drogon/drogon.h>
+#include"Application.h"
 int main() {
+    Application obj;
+    obj.Initialize();
     //Set HTTP listener address and port
     drogon::app().addListener("0.0.0.0", 5555);
     //Load config file

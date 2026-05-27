@@ -1,7 +1,7 @@
 #pragma once
 
 #include <drogon/HttpController.h>
-
+#include "../service/TransactionService.h"
 using namespace drogon;
 
 class TransactionController : public drogon::HttpController<TransactionController>
@@ -18,5 +18,17 @@ public:
     void getTransaction(const HttpRequestPtr& req,
                         std::function<void(const HttpResponsePtr&)>&& callback,
                         const std::string& id);
-    static TransactionService service;
+    TransactionService& service = TransactionService::getInstance();
+    std::atomic<bool> stop{false};
 };
+
+struct ResponsePacket{
+    std::string id;
+    bool success;
+    std::string message;
+    std::string data;
+    std::string error_code;
+    HttpStatusCode httpStatus;
+};
+
+void sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket);
