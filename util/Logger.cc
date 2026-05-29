@@ -11,6 +11,58 @@ void Logger::Initialize( std::string filename = std::string( "/tmp/a.log"), Mode
     }
     logfile<<"---------Started---------"<<std::endl;
 }
+
+template<typename... T>
+void Logger::log(T&&... args)
+{
+    if( setmode >= LOG )
+    try{
+        std::ostringstream oss;
+        auto now = std::chrono::system_clock::now();
+        auto now_c = std::chrono::system_clock::to_time_t(now);
+        oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+        oss << " | ";
+        (oss << ... << args);
+        logfile<<oss.str();
+    }catch(const std::exception& e){
+        std::cout<<"File write error"<<std::endl;
+    }
+}
+
+template<typename... T>
+void Logger::debug(T&&... args)
+{
+    if( setmode >= DEBUG )
+    try{
+        std::ostringstream oss;
+        auto now = std::chrono::system_clock::now();
+        auto now_c = std::chrono::system_clock::to_time_t(now);
+        oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+        oss << " | ";
+        (oss << ... << args);
+        logfile<<oss.str();
+    }catch(const std::exception& e){
+        std::cout<<"File write error"<<std::endl;
+    }
+}
+
+template<typename... T>
+void Logger::error(T&&... args)
+{
+    if( setmode >= ERROR )
+    try{
+        std::ostringstream oss;
+        auto now = std::chrono::system_clock::now();
+        auto now_c = std::chrono::system_clock::to_time_t(now);
+        oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+        oss << " | ";
+        (oss << ... << args);
+        logfile<<oss.str();
+    }catch(const std::exception& e){
+        std::cout<<"File write error"<<std::endl;
+    }
+}
+
 void Logger::log(const std::string& data){
     if( setmode >= LOG )
     try{
