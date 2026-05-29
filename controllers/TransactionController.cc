@@ -3,6 +3,10 @@
 #include "../util/Logger.h"
 #include "../exceptions/DBPoolTimeoutException.h"
 #include "../exceptions/QueueLimitExceedException.h"
+#include "../exceptions/DBConnectionPoolShutdownException.h"
+#include "../exceptions/DBConnectivityException.h"
+#include "../exceptions/DBFetchException.h"
+#include "../exceptions/NoDataFoundException.h"
 
 void sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket){
 	Json::Value resp;
@@ -36,23 +40,29 @@ void TransactionController::getTransaction(
 		sendResponse(callback, responsePacket);
 		return;
 	}
-	if( service.getTransaction( id, txnStatus ) == -1 ){
+	try{
+		service.getTransaction( id, txnStatus );
+		if( txnStatus == "SUCCESS" ){
+			responsePacket.success = true;
+		}else{
+			responsePacket.success = false;
+		}
+		responsePacket.message= txnStatus;
+		responsePacket.httpStatus = k200OK;
+	}
+	catch( const DBConnectivityException &e ){
 		responsePacket.httpStatus = k500InternalServerError; 
 		responsePacket.message = "DB connection failed";
 		responsePacket.error_code = "SYSTEM_MALFUNCTION";
 	}
-	else{
-		if( txnStatus.empty() ){
-			responsePacket.error_code = "NOT_FOUND";
-			responsePacket.httpStatus = k404NotFound;
-		}
-		else{
-			if( txnStatus == "SUCCESS" ){
-				responsePacket.success = true;
-			}
-			responsePacket.message= txnStatus;
-			responsePacket.httpStatus = k200OK;
-		}
+	catch( const NoDataFoundException& e){
+		responsePacket.error_code = "NOT_FOUND";
+		responsePacket.httpStatus = k404NotFound;
+	}
+	catch( const DBFetchException& e){
+		responsePacket.httpStatus = k500InternalServerError; 
+		responsePacket.message = "DB fetch failed";
+		responsePacket.error_code = "SYSTEM_MALFUNCTION";
 	}
 	sendResponse(callback, responsePacket );
 }
@@ -124,6 +134,14 @@ void TransactionController::createTransaction(
 		responsePacket.httpStatus = k503ServiceUnavailable; 
 		responsePacket.success = false;
 		responsePacket.message = "DB connection pool timout";
+		responsePacket.error_code = "DB_POOL_ERROR";
+		sendResponse(callback, responsePacket);
+		return;
+	}
+	catch(const DBConnectionPoolShutdown& err){
+		responsePacket.httpStatus = k503ServiceUnavailable; 
+		responsePacket.success = false;
+		responsePacket.message = "DB connection pool shutting down";
 		responsePacket.error_code = "DB_POOL_ERROR";
 		sendResponse(callback, responsePacket);
 		return;

@@ -27,6 +27,7 @@ private:
     void retryWorkerThread();
     TransactionService(int workerCount = 3);
     ConnectionPool& connectionPool= ConnectionPool::getInstance();
+
 public:
     static TransactionService& getInstance() {
         static TransactionService instance(5);
@@ -45,4 +46,11 @@ public:
     void setRetryFailedTransactions(const TransactionJob& obj, std::string errormesage);
     void Shutdown();
     void Initialize();
+    size_t getMessagesInQueueCount();
+    size_t getWorkersCount();
+    //size_t getActiveWorkersCount();
+    size_t getJobsInPendingCount();
+    size_t getJobsInProcessingCount();
+    size_t getJobsInFailedRetryCount();
+    bool isServiceStopping();
 };

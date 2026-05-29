@@ -7,7 +7,6 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
-#include<sstream>
 
 enum Mode{
 DEBUG,
@@ -40,6 +39,12 @@ class Logger{
     void Initialize( std::string, Mode);
     void Shutdown();
     std::string getTimeStamp();
+    template<typename... T>
+    void log(T&&... t);
+    template<typename... T>
+    void error(T&&... t);
+    template<typename... T>
+    void debug(T&&... t);
 };
 
 extern Logger& logger;

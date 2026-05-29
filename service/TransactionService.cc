@@ -1,21 +1,158 @@
 #include "TransactionService.h"
-#include"../exceptions/PaymentException.h"
-#include"exceptions/RetryableException.h"
+#include "../exceptions/PaymentException.h"
+#include "exceptions/RetryableException.h"
 #include <libpq-fe.h>
 #include <iostream>
-#include"../database/ConnectionPoolWrapper.h"
+#include "../database/ConnectionPoolWrapper.h"
 #include <chrono>
-#include"../exceptions/PaymentException.h"
-#include"../exceptions/QueueLimitExceedException.h"
 #include "../util/Logger.h"
+#include "../exceptions/PaymentException.h"
+#include "../exceptions/QueueLimitExceedException.h"
+#include "../exceptions/DBConnectivityException.h"
+#include "../exceptions/DBFetchException.h"
+#include "../exceptions/NoDataFoundException.h"
 
 #define MAX_MSG_IN_QUEUE 5
 
 using namespace std::chrono_literals;
 
+bool TransactionService::isServiceStopping(){
+    return stop;
+}
+size_t TransactionService::getMessagesInQueueCount(){
+    return jobQueue.size();
+}
+size_t TransactionService::getWorkersCount(){
+    return workers.size();
+}
+size_t TransactionService::getJobsInPendingCount(){
+    ConnectionPoolWrapper conn;
+    if (PQstatus(conn.get()) != CONNECTION_OK)
+    {
+        //connectionPool.releaseConnection(conn);
+        throw DBConnectivityException("Issue in connecting database");
+    }
+    const char* paramValues[1];
+    PGresult *res = PQexecParams(conn.get(),
+    "SELECT count(*)  FROM transactions WHERE state = 'PENDING' and retry <= 3",
+    0,       /* number of parameters */
+    NULL,    /* let the backend deduce param types */
+    NULL,
+    NULL,    /* don't need lengths for text params */
+    NULL,    /* default to all text params */
+    0);      /* ask for text results */
+
+    if ( PQresultStatus(res) != PGRES_TUPLES_OK ) {
+        logger.log("Error occurred while fetching transaction status");
+        const char* sqlerrm = PQresultErrorMessage( res);
+        if( sqlerrm){
+            oss.str("");
+            oss<<sqlerrm;
+            logger.error(oss.str());
+        }
+        const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
+        if( sqlstate){
+            oss.str("");
+            oss<<sqlstate;
+            logger.error(oss.str());
+        }
+        PQclear(res);
+        logger.error("Unable to fetch from database", sqlerrm?sqlerrm:"", sqlstate?sqlstate:sqlstate);
+        throw DBFetchException( std::string(sqlerrm?sqlerrm:"") + std::string(" ") +std::string(sqlstate?sqlstate:"") );
+    } else {
+        size_t count = std::stoull(PQgetvalue(res, 0, 0));
+        PQclear(res);
+        return count;
+    }
+    return 0;
+}
+
+size_t TransactionService::getJobsInProcessingCount(){
+    ConnectionPoolWrapper conn;
+    if (PQstatus(conn.get()) != CONNECTION_OK)
+    {
+        //connectionPool.releaseConnection(conn);
+        throw DBConnectivityException("Issue in connecting database");
+    }
+    const char* paramValues[1];
+    PGresult *res = PQexecParams(conn.get(),
+    "SELECT count(*)  FROM transactions WHERE state = 'PROCESSING' and retry <= 3",
+    0,       /* number of parameters */
+    NULL,    /* let the backend deduce param types */
+    NULL,
+    NULL,    /* don't need lengths for text params */
+    NULL,    /* default to all text params */
+    0);      /* ask for text results */
+
+    if ( PQresultStatus(res) != PGRES_TUPLES_OK ) {
+        logger.log("Error occurred while fetching transaction status");
+        const char* sqlerrm = PQresultErrorMessage( res);
+        if( sqlerrm){
+            oss.str("");
+            oss<<sqlerrm;
+            logger.error(oss.str());
+        }
+        const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
+        if( sqlstate){
+            oss.str("");
+            oss<<sqlstate;
+            logger.error(oss.str());
+        }
+        PQclear(res);
+        logger.error("Unable to fetch from database", sqlerrm?sqlerrm:"", sqlstate?sqlstate:sqlstate);
+        throw DBFetchException( std::string(sqlerrm?sqlerrm:"") + std::string(" ") +std::string(sqlstate?sqlstate:"") );
+    } else {
+        size_t count = std::stoull(PQgetvalue(res, 0, 0));
+        PQclear(res);
+        return count;
+    }
+    return 0;
+}
+size_t TransactionService::getJobsInFailedRetryCount(){
+    ConnectionPoolWrapper conn;
+    if (PQstatus(conn.get()) != CONNECTION_OK)
+    {
+        //connectionPool.releaseConnection(conn);
+        throw DBConnectivityException("Issue in connecting database");
+    }
+    const char* paramValues[1];
+    PGresult *res = PQexecParams(conn.get(),
+    "SELECT count(*)  FROM transactions WHERE state = 'FAILED_RETRY' and retry <= 3",
+    0,       /* number of parameters */
+    NULL,    /* let the backend deduce param types */
+    NULL,
+    NULL,    /* don't need lengths for text params */
+    NULL,    /* default to all text params */
+    0);      /* ask for text results */
+
+    if ( PQresultStatus(res) != PGRES_TUPLES_OK ) {
+        logger.log("Error occurred while fetching transaction status");
+        const char* sqlerrm = PQresultErrorMessage( res);
+        if( sqlerrm){
+            oss.str("");
+            oss<<sqlerrm;
+            logger.error(oss.str());
+        }
+        const char* sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
+        if( sqlstate){
+            oss.str("");
+            oss<<sqlstate;
+            logger.error(oss.str());
+        }
+        PQclear(res);
+        logger.error("Unable to fetch from database", sqlerrm?sqlerrm:"", sqlstate?sqlstate:sqlstate);
+        throw DBFetchException( std::string(sqlerrm?sqlerrm:"") + std::string(" ") +std::string(sqlstate?sqlstate:"") );
+    } else {
+        size_t count = std::stoull(PQgetvalue(res, 0, 0));
+        PQclear(res);
+        return count;
+    }
+    return 0;
+}
+
 TransactionService::TransactionService(int workerCount) : WorkerCount{workerCount}{
     oss.str("");
-    oss<<"TransactionService: creating "<< WorkerCount<<" workers" ;
+    oss<<"TransactionService: Need to create "<< WorkerCount<<" workers" ;
     logger.debug(oss.str());
 };
 
@@ -56,12 +193,13 @@ TransactionService::~TransactionService() {
 void TransactionService::createTransaction(const TransactionJob& obj) {
     //PGconn* conn = connectionPool.getConnection();
     ConnectionPoolWrapper conn;
+    /*
     if ( conn.get() == nullptr ){
         oss.str("");
         oss<<"Null DB handle. ";
         logger.error(oss.str());
         throw std::system_error(errno, std::generic_category(), "Database connection error");
-    }
+    }*/
     if ( PQstatus( conn.get() ) != CONNECTION_OK )
     {
         oss.str("");
@@ -164,9 +302,9 @@ void TransactionService::workerThread() {
 
             //PGconn* conn = connectionPool.getConnection();
             ConnectionPoolWrapper conn;
-            if (conn.get() == nullptr){
+            /*if (conn.get() == nullptr){
                 throw std::system_error(errno, std::generic_category(), "Database connection error");
-            }
+            }*/
             if (PQstatus(conn.get()) == CONNECTION_OK) {
                 oss.str("");
                 oss<<"Databse connected";
@@ -308,13 +446,13 @@ int TransactionService::getTransaction( std::string idempotency_id, std::string 
             logger.debug(oss.str());
     //PGconn* conn = connectionPool.getConnection();
     ConnectionPoolWrapper conn;
-    if (conn.get() == nullptr){
+    /*if (conn.get() == nullptr){
         throw std::system_error(errno, std::generic_category(), "Database connection error");
-    }
+    }*/
     if (PQstatus(conn.get()) != CONNECTION_OK)
     {
         //connectionPool.releaseConnection(conn);
-        return -1;
+        throw DBConnectivityException("Issue in connecting database");
     }
     const char* paramValues[1];
     paramValues[0] = idempotency_id.c_str();
@@ -346,9 +484,12 @@ int TransactionService::getTransaction( std::string idempotency_id, std::string 
         PQclear(res);
         //connectionPool.releaseConnection(conn);
         status = "";
+        throw DBFetchException( std::string(sqlerrm?sqlerrm:"") + std::string(" ") +std::string(sqlstate?sqlstate:"") );
     } else {
         if (PQntuples(res) == 0) {
             status = "";
+            PQclear(res);
+            throw NoDataFoundException("Idempotency key not found in database");
         } else {
             status = PQgetvalue(res, 0, 0);
         }

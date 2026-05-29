@@ -28,4 +28,7 @@ class ConnectionPool{
         std::string getErrorMessage();
         std::string className();
         void Shutdown();
+        size_t getAvailableConnectionsCount();
+        size_t getPoolSize();
+        bool isPoolStopping();
 };

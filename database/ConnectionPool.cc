@@ -3,7 +3,19 @@
 #include"../util/Logger.h"
 #include <chrono>
 #include "../exceptions/DBPoolTimeoutException.h"
+#include "../exceptions/DBConnectionPoolShutdownException.h"
+
 using namespace std::chrono_literals;
+
+size_t ConnectionPool::getAvailableConnectionsCount(){
+    return connections.size();
+}
+size_t ConnectionPool::getPoolSize(){
+    return poolSize;
+}
+bool ConnectionPool::isPoolStopping(){
+    return stop;
+}
 
 ConnectionPool& ConnectionPool::getInstance(){
     static ConnectionPool instance;
@@ -56,14 +68,10 @@ PGconn* ConnectionPool::getConnection(){
     if( !cv.wait_for(lock, 2s, [this] {
         return (!connections.empty() || stop);
     }) ){
-        //return nullptr;
         throw DBPoolTimeoutException("The pool cannot provide a connection at this point");
     }
     if( stop ){
-        oss.str("");
-        oss<<"Connection pool is shutting down. No more connections can be provided.";
-        logger.log(oss.str());
-        return nullptr;
+        throw DBConnectionPoolShutdown("DB Connection pool shutting down");
     }
     oss.str("");
     oss<<"Connection provided from pool. Remaining connections "<< connections.size() - 1 ;
