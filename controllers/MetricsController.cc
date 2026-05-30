@@ -2,17 +2,19 @@
 #include "MetricsController.h"
 #include "../util/Logger.h"
 
-void sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket){
+void MetricsController::sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket){
 	Json::Value resp;
-    resp["MessagesInQueueCount"] = std::to_string(responsePacket.MessagesInQueueCount);
-    resp["ActiveWorkersCount"] = std::to_string(responsePacket.ActiveWorkersCount);
-    resp["JobsInPendingCount"] = std::to_string(responsePacket.JobsInPendingCount);
-    resp["JobsInProcessingCount"] = std::to_string(responsePacket.JobsInProcessingCount);
-    resp["JobsInFailedRetryCount"] = std::to_string(responsePacket.JobsInFailedRetryCount);
-    resp["ServiceStopping"] = responsePacket.ServiceStopping;
-    resp["AvailableConnectionsCount"] = std::to_string(responsePacket.AvailableConnectionsCount);
-    resp["DBPoolSize"] = std::to_string(responsePacket.DBPoolSize);
-    resp["DBPoolStopping"] = responsePacket.DBPoolStopping;
+    resp["MessagesInQueueCount"]        = Json::UInt64( responsePacket.MessagesInQueueCount );
+    resp["SetWorkersCount"]             = Json::UInt64( responsePacket.SetWorkersCount );
+    resp["JobsInPendingCount"]          = Json::UInt64( responsePacket.JobsInPendingCount );
+    resp["DeadJobsCount"]               = Json::UInt64( responsePacket.DeadJobsCount );
+    resp["JobsInProcessingCount"]       = Json::UInt64( responsePacket.JobsInProcessingCount );
+    resp["JobsInFailedRetryCount"]      = Json::UInt64( responsePacket.JobsInFailedRetryCount );
+    resp["ServiceStopping"]             = responsePacket.ServiceStopping;
+    resp["AvailableConnectionsCount"]   = Json::UInt64( responsePacket.AvailableConnectionsCount );
+    resp["DBPoolSize"]                  = Json::UInt64( responsePacket.DBPoolSize );
+    resp["DBPoolStopping"]              = responsePacket.DBPoolStopping;
+    resp["ActiveThreads"]               = Json::UInt64( responsePacket.activeWorkerThreads );
 	auto response = HttpResponse::newHttpJsonResponse(resp);
 	response->setStatusCode( k200OK );
 	callback(response);
@@ -25,15 +27,17 @@ void MetricsController::getMetrics(
 {
 
 	ResponsePacket responsePacket;
-    responsePacket.MessagesInQueueCount = service.getMessagesInQueueCount();
-    responsePacket.ActiveWorkersCount = service.getWorkersCount();
-    responsePacket.JobsInPendingCount = service.getJobsInPendingCount();
-    responsePacket.JobsInProcessingCount = service.getJobsInProcessingCount();
-    responsePacket.JobsInFailedRetryCount = service.getJobsInFailedRetryCount();
-    responsePacket.ServiceStopping = service.isServiceStopping();
-    responsePacket.AvailableConnectionsCount = pool.getAvailableConnectionsCount();
-    responsePacket.DBPoolSize = pool.getPoolSize();
-    responsePacket.DBPoolStopping = pool.isPoolStopping();
+    responsePacket.MessagesInQueueCount         = service.getMessagesInQueueCount();
+    responsePacket.SetWorkersCount              = service.getSetWorkersCount();
+    responsePacket.JobsInPendingCount           = service.getJobsInPendingCount();
+    responsePacket.DeadJobsCount                = service.getDeadJobsCount();
+    responsePacket.JobsInProcessingCount        = service.getJobsInProcessingCount();
+    responsePacket.JobsInFailedRetryCount       = service.getJobsInFailedRetryCount();
+    responsePacket.ServiceStopping              = service.isServiceStopping();
+    responsePacket.AvailableConnectionsCount    = pool.getAvailableConnectionsCount();
+    responsePacket.DBPoolSize                   = pool.getPoolSize();
+    responsePacket.DBPoolStopping               = pool.isPoolStopping();
+    responsePacket.activeWorkerThreads          = service.getActiveWorkerCount();
     
 	sendResponse(callback, responsePacket );
 }

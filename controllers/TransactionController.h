@@ -7,6 +7,7 @@ using namespace drogon;
 
 class TransactionController : public drogon::HttpController<TransactionController>
 {
+    struct ResponsePacket;
 public:
     METHOD_LIST_BEGIN
     ADD_METHOD_TO(TransactionController::createTransaction, "/transaction", Post);
@@ -21,9 +22,10 @@ public:
                         const std::string& id);
     TransactionService& service = TransactionService::getInstance();
     std::atomic<bool> stop{false};
+    void sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket);
 };
 
-struct ResponsePacket{
+struct TransactionController::ResponsePacket{
     std::string id;
     bool success;
     std::string message;
@@ -32,4 +34,4 @@ struct ResponsePacket{
     HttpStatusCode httpStatus;
 };
 
-void sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket);
+//void sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket);

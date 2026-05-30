@@ -8,7 +8,7 @@
 #include "../exceptions/DBFetchException.h"
 #include "../exceptions/NoDataFoundException.h"
 
-void sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket){
+void TransactionController::sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket){
 	Json::Value resp;
 	resp["id"] = responsePacket.id;
 	resp["success"] = responsePacket.success;
@@ -125,9 +125,7 @@ void TransactionController::createTransaction(
 	}
 
 	try{
-		oss.str("");
-    	oss<<"Prepare to create record in database";
-		logger.debug(oss.str());
+		logger.debug("Prepare to create record in database");
 		service.createTransaction(obj);
 	}
 	catch(const DBPoolTimeoutException& err){
@@ -155,9 +153,7 @@ void TransactionController::createTransaction(
 		return;
 	}
 	try{
-		oss.str("");
-		oss<<"Prepare to enqueue record for processing";
-		logger.debug(oss.str());
+		logger.debug( "Prepare to enqueue record for processing" );
 		service.enqueue(obj);
 	}
 	catch(const QueueLimitExceedException &e){

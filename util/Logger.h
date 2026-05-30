@@ -15,7 +15,7 @@ ERROR,
 FATAL
 };
 
-extern std::ostringstream oss;
+//extern std::ostringstream oss;
 
 class Logger{
     std::ofstream logfile;
@@ -30,15 +30,8 @@ class Logger{
         static Logger obj;
         return obj;
     }
-    void log( const std::string& );
-    void debug(const std::string& );
-    void log( const char* );
-    void debug( const char* );
-    void error( const char* );
-    void error( const std::string& );
     void Initialize( std::string, Mode);
     void Shutdown();
-    std::string getTimeStamp();
     template<typename... T>
     void log(T&&... t);
     template<typename... T>
@@ -46,5 +39,59 @@ class Logger{
     template<typename... T>
     void debug(T&&... t);
 };
+
+template<typename... T>
+void Logger::log(T&&... args)
+{
+    if( setmode >= LOG )
+    try{
+        std::lock_guard<std::mutex> lock(mtx);
+        std::ostringstream oss;
+        auto now = std::chrono::system_clock::now();
+        auto now_c = std::chrono::system_clock::to_time_t(now);
+        oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+        oss << " | ";
+        (oss << ... << args);
+        logfile<<oss.str()<<std::endl;
+    }catch(const std::exception& e){
+        std::cout<<"File write error"<<std::endl;
+    }
+}
+
+template<typename... T>
+void Logger::debug(T&&... args)
+{
+    if( setmode >= DEBUG )
+    try{
+        std::lock_guard<std::mutex> lock(mtx);
+        std::ostringstream oss;
+        auto now = std::chrono::system_clock::now();
+        auto now_c = std::chrono::system_clock::to_time_t(now);
+        oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+        oss << " | ";
+        (oss << ... << args);
+        logfile<<oss.str()<<std::endl;
+    }catch(const std::exception& e){
+        std::cout<<"File write error"<<std::endl;
+    }
+}
+
+template<typename... T>
+void Logger::error(T&&... args)
+{
+    if( setmode >= ERROR )
+    try{
+        std::lock_guard<std::mutex> lock(mtx);
+        std::ostringstream oss;
+        auto now = std::chrono::system_clock::now();
+        auto now_c = std::chrono::system_clock::to_time_t(now);
+        oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+        oss << " | ";
+        (oss << ... << args);
+        logfile<<oss.str()<<std::endl;
+    }catch(const std::exception& e){
+        std::cout<<"File write error"<<std::endl;
+    }
+}
 
 extern Logger& logger;

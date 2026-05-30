@@ -22,7 +22,7 @@ class ConnectionPool{
         static ConnectionPool& getInstance();
         ConnectionPool(ConnectionPool const&) = delete;
         void operator=(ConnectionPool const&) = delete;
-        int Initialize( int poolSize );
+        void Initialize( int poolSize );
         PGconn* getConnection();
         void releaseConnection( PGconn* conn );
         std::string getErrorMessage();

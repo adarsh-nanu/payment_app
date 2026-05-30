@@ -8,29 +8,17 @@
 void initShutDown( int signal ){
     TransactionService& service = TransactionService::getInstance();
     ConnectionPool& connectionPool = ConnectionPool::getInstance();
-    oss.str("");
-    oss<<"Received signal "<<signal;
-    logger.log(oss.str());
+    logger.log( "Received signal ", signal );
     write(STDOUT_FILENO, "SIGNAL RECEIVED\n", 16);
     if( signal == SIGUSR1 ){
-        oss.str("");
-        oss<<"Trigerring service shutdown";
-        logger.log(oss.str());
+        logger.log( "Trigerring service shutdown");
         service.Shutdown();
-        oss.str("");
-        oss<<"Service shutdown triggered. Waiting for ongoing transactions to complete...";
-        logger.log(oss.str());
+        logger.log( "Service shutdown triggered. Waiting for ongoing transactions to complete...");
         connectionPool.Shutdown();
-        oss.str("");
-        oss<<"Connection pool shutdown triggered. Waiting for ongoing connections to complete...";
-        logger.debug(oss.str());
-        oss.str("");
-        oss<<"Stopping..";
-        logger.debug(oss.str());
+        logger.log( "Connection pool shutdown triggered. Waiting for ongoing connections to complete...");
+        logger.log( "Stopping.." );
     }
-    oss.str("");
-    oss<<"Stopped";
-    logger.log(oss.str());
+    logger.log( "Stopped" );
     drogon::app().quit();
     logger.Shutdown();
 }
@@ -38,7 +26,9 @@ void initShutDown( int signal ){
 void Application::Initialize(){
     logger.Initialize("/Users/adarshnanu/drogon/build/payment_app/build/app.log", DEBUG);
     logger.log("..Initialized");
-    if( connectionPool.Initialize(1) < 0 ){
+    try{
+    connectionPool.Initialize(10);
+    }catch(const std::exception& e){
         std::cerr<<"Failed to initialize connection pool: "<< connectionPool.getErrorMessage() ;
         throw std::runtime_error("Failed to initialize connection pool");
     }   

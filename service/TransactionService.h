@@ -27,7 +27,6 @@ private:
     void retryWorkerThread();
     TransactionService(int workerCount = 3);
     ConnectionPool& connectionPool= ConnectionPool::getInstance();
-
 public:
     static TransactionService& getInstance() {
         static TransactionService instance(5);
@@ -47,10 +46,21 @@ public:
     void Shutdown();
     void Initialize();
     size_t getMessagesInQueueCount();
-    size_t getWorkersCount();
-    //size_t getActiveWorkersCount();
+    size_t getSetWorkersCount();
+    size_t getActiveWorkersCount();
     size_t getJobsInPendingCount();
+    size_t getDeadJobsCount();
     size_t getJobsInProcessingCount();
     size_t getJobsInFailedRetryCount();
     bool isServiceStopping();
+    static std::atomic<size_t> activeWorkers;
+    size_t getActiveWorkerCount();
+};
+
+//extern std::atomic<int> TransactionService::activeWorkers;
+
+class ActiveWorkerTracker{
+    public:
+        ActiveWorkerTracker();
+        ~ActiveWorkerTracker();
 };
