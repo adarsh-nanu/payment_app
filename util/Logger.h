@@ -9,17 +9,18 @@
 #include <sstream>
 
 enum Mode{
-DEBUG,
-LOG,
+NONE,
+FATAL,
 ERROR,
-FATAL
+LOG,
+DEBUG
 };
 
 //extern std::ostringstream oss;
 
 class Logger{
     std::ofstream logfile;
-    Mode setmode;
+    std::atomic<Mode> setmode;
     std::mutex mtx;
     Logger() = default;
     Logger( const Logger& ) = delete;
@@ -38,6 +39,9 @@ class Logger{
     void error(T&&... t);
     template<typename... T>
     void debug(T&&... t);
+    template<typename... T>
+    void fatal(T&&... t);
+    bool changeLoggingMode( int);
 };
 
 template<typename... T>
@@ -94,4 +98,21 @@ void Logger::error(T&&... args)
     }
 }
 
+template<typename... T>
+void Logger::fatal(T&&... args)
+{
+    if( setmode >= FATAL )
+    try{
+        std::lock_guard<std::mutex> lock(mtx);
+        std::ostringstream oss;
+        auto now = std::chrono::system_clock::now();
+        auto now_c = std::chrono::system_clock::to_time_t(now);
+        oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
+        oss << " | ";
+        (oss << ... << args);
+        logfile<<oss.str()<<std::endl;
+    }catch(const std::exception& e){
+        std::cout<<"File write error"<<std::endl;
+    }
+}
 extern Logger& logger;

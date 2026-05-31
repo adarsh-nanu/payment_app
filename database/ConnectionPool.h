@@ -31,4 +31,5 @@ class ConnectionPool{
         size_t getAvailableConnectionsCount();
         size_t getPoolSize();
         bool isPoolStopping();
+        PGconn* reConnect();
 };

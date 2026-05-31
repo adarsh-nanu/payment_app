@@ -33,5 +33,3 @@ struct TransactionController::ResponsePacket{
     std::string error_code;
     HttpStatusCode httpStatus;
 };
-
-//void sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket);

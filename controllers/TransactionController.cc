@@ -20,6 +20,7 @@ void TransactionController::sendResponse(std::function<void(const HttpResponsePt
 	auto response = HttpResponse::newHttpJsonResponse(resp);
 	response->setStatusCode( responsePacket.httpStatus );
 	callback(response);
+	logger.log("Response [", responsePacket.success, "]sent back for ", responsePacket.id);
 	return;
 }
 

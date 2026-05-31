@@ -40,4 +40,5 @@ void MetricsController::getMetrics(
     responsePacket.activeWorkerThreads          = service.getActiveWorkerCount();
     
 	sendResponse(callback, responsePacket );
+    logger.log("Get metrics response sent");
 }

@@ -32,4 +32,3 @@ struct HealthController::ResponsePacketAlive{
 struct HealthController::ResponsePacketReady{
     bool Ready;
 };
-//void sendResponse(std::function<void(const HttpResponsePtr&)> &callback, const ResponsePacket &responsePacket);

@@ -46,14 +46,14 @@ void ConnectionPool::Initialize(int poolSize){
                 const char* sqlerrm = PQerrorMessage( conn );
                 if( sqlerrm)                
                     lastErrorMessage = sqlerrm;
-                logger.error( "Error occurred while initializing connection: ", sqlerrm);
+                logger.fatal( "Error occurred while initializing connection: ", sqlerrm);
                 throw DBConnectivityException( std::string("Unable to connect database") + " " + std::string( sqlerrm) );
             }
             connections.push(conn);
-            logger.debug("Connection ", i, "initialized and added to pool");
+            logger.log("Connection ", i, "initialized and added to pool");
         } catch( const std::exception& e ){
+            logger.fatal( "Error occurred while initializing connection: ", e.what() );
             throw DBConnectivityException("Unable to connect database");
-            logger.error( "Error occurred while initializing connection: ", e.what() );
         }
     }
 }
@@ -87,4 +87,9 @@ std::string ConnectionPool::getErrorMessage(){
 
 std::string ConnectionPool::className(){
     return "ConnectionPool";
+}
+
+PGconn* ConnectionPool::reConnect(){
+    PGconn* conn = PQconnectdb("host=127.0.0.1 port=5432 dbname=payments user=postgres password=postgres123 connect_timeout=2");
+    return conn;
 }

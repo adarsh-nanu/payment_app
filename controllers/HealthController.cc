@@ -33,6 +33,7 @@ void HealthController::isAlive(
 	ResponsePacketAlive responsePacket;
     responsePacket.Alive = true;
 	sendResponse(callback, responsePacket );
+    logger.log("Heartbeat response sent");
 }
 
 void HealthController::isReady( const HttpRequestPtr& req,
@@ -41,4 +42,5 @@ void HealthController::isReady( const HttpRequestPtr& req,
     ResponsePacketReady responsePacket;
     responsePacket.Ready =  !service.isServiceStopping() && !pool.isPoolStopping();
     sendResponse(callback, responsePacket );
+    logger.log("Readystate response sent");
 }

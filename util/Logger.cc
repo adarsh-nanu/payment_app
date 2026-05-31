@@ -20,3 +20,34 @@ void Logger::Shutdown(){
         std::cout<<"Unable to close log file"<<std::endl;
     }
 }
+
+bool Logger::changeLoggingMode(int _mode){
+    //std::lock_guard<std::mutex> lock(mtx);
+    bool changed = false;
+    logger.log("Current mode: ", setmode);
+    switch( _mode){
+        case DEBUG:
+            if(setmode != DEBUG) changed = true;
+            setmode = DEBUG;
+            break;
+        case LOG:
+            if(setmode != LOG) changed = true;
+            setmode = LOG;
+            break;
+        case ERROR:
+            if(setmode != ERROR) changed = true;
+            setmode = ERROR;
+            break;
+        case FATAL:
+            if(setmode != FATAL) changed = true;
+            setmode = FATAL;
+            break;
+        case 0:
+        if(setmode != NONE) changed = true;
+            setmode = NONE;
+        default:
+            break;
+    }
+    logger.log("New mode: ", setmode);
+    return changed;
+}
