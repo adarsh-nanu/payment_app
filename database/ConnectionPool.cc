@@ -5,6 +5,8 @@
 #include "../exceptions/DBPoolTimeoutException.h"
 #include "../exceptions/DBConnectionPoolShutdownException.h"
 #include "../exceptions/DBConnectivityException.h"
+#include "../util/ConfigManager.h"
+
 using namespace std::chrono_literals;
 
 size_t ConnectionPool::getAvailableConnectionsCount(){
@@ -37,17 +39,24 @@ ConnectionPool::~ConnectionPool(){
     }
 }
 
-void ConnectionPool::Initialize(int poolSize){
-    this->poolSize = poolSize;
+void ConnectionPool::Initialize(){
+    ConfigManager configManager("/Users/adarshnanu/drogon/build/payment_app/config/appsettings.json");
+    poolSize = configManager.getInt("connectionPoolSize");
+    connectionPoolTimeoutSeconds = configManager.getInt("connectionPoolTimeoutSeconds");
+    host = configManager.getString("dbhostname");
+    port = configManager.getInt("dbport");
+    dbname = configManager.getString("dbname");
+    username = configManager.getString("dbusername");
+    password = configManager.getString("dbpassword");
+
     for( int i = 0; i < poolSize; i++ ){
         try{
-            PGconn* conn = PQconnectdb("host=127.0.0.1 port=5432 dbname=payments user=postgres password=postgres123 connect_timeout=2");
+            PGconn* conn = PQconnectdb( ( std::string( "host=" ) + host + std::string( " port=" ) + std::to_string( port )+ std::string( " dbname=" ) + dbname + std::string( " user=" ) + username + std::string( " password=" ) + password + std::string( " connect_timeout=" ) + std::to_string( connectionPoolTimeoutSeconds ) ).c_str() );
             if( PQstatus( conn ) != CONNECTION_OK ){
                 const char* sqlerrm = PQerrorMessage( conn );
                 if( sqlerrm)                
                     lastErrorMessage = sqlerrm;
-                logger.fatal( "Error occurred while initializing connection: ", sqlerrm);
-                throw DBConnectivityException( std::string("Unable to connect database") + " " + std::string( sqlerrm) );
+                throw DBConnectivityException( std::string("Unable to connect database") + " " + (sqlerrm?std::string( sqlerrm):"") );
             }
             connections.push(conn);
             logger.log("Connection ", i, "initialized and added to pool");
@@ -60,7 +69,7 @@ void ConnectionPool::Initialize(int poolSize){
 
 PGconn* ConnectionPool::getConnection(){
     std::unique_lock<std::mutex> lock(mtx);
-    if( !cv.wait_for(lock, 2s, [this] {
+    if( !cv.wait_for(lock, std::chrono::seconds(connectionPoolTimeoutSeconds), [this] {
         return (!connections.empty() || stop);
     }) ){
         throw DBPoolTimeoutException("The pool cannot provide a connection at this point");
@@ -90,6 +99,6 @@ std::string ConnectionPool::className(){
 }
 
 PGconn* ConnectionPool::reConnect(){
-    PGconn* conn = PQconnectdb("host=127.0.0.1 port=5432 dbname=payments user=postgres password=postgres123 connect_timeout=2");
+    PGconn* conn = PQconnectdb( ( std::string( "host=" ) + host + std::string( " port=" ) + std::to_string( port )+ std::string( " dbname=" ) + dbname + std::string( " user=" ) + username + std::string( " password=" ) + password + std::string( " connect_timeout=" ) + std::to_string( connectionPoolTimeoutSeconds ) ).c_str() );
     return conn;
 }

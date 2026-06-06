@@ -3,7 +3,7 @@
 #include "service/TransactionService.h"
 #include "database/ConnectionPool.h"
 #include "util/Logger.h"
-
+#include "util/ConfigManager.h"
 
 class Application{
     public:

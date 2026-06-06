@@ -16,7 +16,7 @@ LOG,
 DEBUG
 };
 
-//extern std::ostringstream oss;
+extern thread_local std::string threadName;
 
 class Logger{
     std::ofstream logfile;
@@ -42,77 +42,60 @@ class Logger{
     template<typename... T>
     void fatal(T&&... t);
     bool changeLoggingMode( int);
+    template<typename... T>
+    void write(T&&... t);
 };
 
 template<typename... T>
-void Logger::log(T&&... args)
+void Logger::write(T&&... args)
 {
-    if( setmode >= LOG )
     try{
         std::lock_guard<std::mutex> lock(mtx);
         std::ostringstream oss;
         auto now = std::chrono::system_clock::now();
         auto now_c = std::chrono::system_clock::to_time_t(now);
+        auto ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
         oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
-        oss << " | ";
-        (oss << ... << args);
+        oss << ',';
+        oss << std::setfill('0');
+        oss << std::setw(3);
+        oss << ms.count();
+        oss << " [";
+        oss << threadName;
+        oss << "] ";
+        ( ( oss << args << ' '), ...);
         logfile<<oss.str()<<std::endl;
     }catch(const std::exception& e){
         std::cout<<"File write error"<<std::endl;
     }
+}
+
+template<typename... T>
+void Logger::log(T&&... args){
+    if( setmode >= LOG )
+        write( std::forward<T>(args)... );
 }
 
 template<typename... T>
 void Logger::debug(T&&... args)
 {
     if( setmode >= DEBUG )
-    try{
-        std::lock_guard<std::mutex> lock(mtx);
-        std::ostringstream oss;
-        auto now = std::chrono::system_clock::now();
-        auto now_c = std::chrono::system_clock::to_time_t(now);
-        oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
-        oss << " | ";
-        (oss << ... << args);
-        logfile<<oss.str()<<std::endl;
-    }catch(const std::exception& e){
-        std::cout<<"File write error"<<std::endl;
-    }
+        write( std::forward<T>(args)... );
 }
 
 template<typename... T>
 void Logger::error(T&&... args)
 {
     if( setmode >= ERROR )
-    try{
-        std::lock_guard<std::mutex> lock(mtx);
-        std::ostringstream oss;
-        auto now = std::chrono::system_clock::now();
-        auto now_c = std::chrono::system_clock::to_time_t(now);
-        oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
-        oss << " | ";
-        (oss << ... << args);
-        logfile<<oss.str()<<std::endl;
-    }catch(const std::exception& e){
-        std::cout<<"File write error"<<std::endl;
-    }
+        write( std::forward<T>(args)... );
 }
 
 template<typename... T>
 void Logger::fatal(T&&... args)
 {
     if( setmode >= FATAL )
-    try{
-        std::lock_guard<std::mutex> lock(mtx);
-        std::ostringstream oss;
-        auto now = std::chrono::system_clock::now();
-        auto now_c = std::chrono::system_clock::to_time_t(now);
-        oss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
-        oss << " | ";
-        (oss << ... << args);
-        logfile<<oss.str()<<std::endl;
-    }catch(const std::exception& e){
-        std::cout<<"File write error"<<std::endl;
-    }
+        write( std::forward<T>(args)... );
 }
+
 extern Logger& logger;

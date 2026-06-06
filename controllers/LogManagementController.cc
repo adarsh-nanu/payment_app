@@ -17,6 +17,9 @@ void LogManagementController::setloglevel(
     int mode
 )
 {
+    if( threadName.empty() ){
+		threadName = "http-" + std::to_string( std::hash<std::thread::id>{}( std::this_thread::get_id() ) );
+	}
     LogManagementController::ResponsePacket responsePacket;
     responsePacket.changed = logger.changeLoggingMode(mode);
 	sendResponse(callback, responsePacket );

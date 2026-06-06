@@ -23,10 +23,11 @@ private:
     std::vector<std::thread> workers;
     std::atomic<bool> stop{false};
     int WorkerCount;
-    void workerThread();
+    void workerThread(int);
     void retryWorkerThread();
     TransactionService(int workerCount = 3);
     ConnectionPool& connectionPool= ConnectionPool::getInstance();
+    int retryWorkerIntervalSeconds;
 public:
     static TransactionService& getInstance() {
         static TransactionService instance(5);
@@ -55,6 +56,7 @@ public:
     bool isServiceStopping();
     static std::atomic<size_t> activeWorkers;
     size_t getActiveWorkerCount();
+    int maxMessagesInQueue;
 };
 
 //extern std::atomic<int> TransactionService::activeWorkers;

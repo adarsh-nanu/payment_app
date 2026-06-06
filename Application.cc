@@ -25,10 +25,11 @@ void initShutDown( int signal ){
 
 void Application::Initialize(){
     logger.Initialize("/Users/adarshnanu/drogon/build/payment_app/build/app.log", DEBUG);
-    logger.log("..Initialized");
+    logger.log("Initializing..");
     try{
-    connectionPool.Initialize(10);
+        connectionPool.Initialize();
     }catch(const std::exception& e){
+        logger.debug(e.what());
         std::cerr<<"Failed to initialize connection pool: "<< connectionPool.getErrorMessage() ;
         throw std::runtime_error("Failed to initialize connection pool");
     }   

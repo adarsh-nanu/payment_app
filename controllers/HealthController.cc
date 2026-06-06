@@ -30,6 +30,9 @@ void HealthController::isAlive(
     const HttpRequestPtr& req,
     std::function<void(const HttpResponsePtr&)>&& callback)
 {
+    if( threadName.empty() ){
+		threadName = "http-" + std::to_string( std::hash<std::thread::id>{}( std::this_thread::get_id() ) );
+	}
 	ResponsePacketAlive responsePacket;
     responsePacket.Alive = true;
 	sendResponse(callback, responsePacket );
@@ -39,6 +42,9 @@ void HealthController::isAlive(
 void HealthController::isReady( const HttpRequestPtr& req,
     std::function<void(const HttpResponsePtr&)>&& callback)
 {
+    if( threadName.empty() ){
+		threadName = "http-" + std::to_string( std::hash<std::thread::id>{}( std::this_thread::get_id() ) );
+	}
     ResponsePacketReady responsePacket;
     responsePacket.Ready =  !service.isServiceStopping() && !pool.isPoolStopping();
     sendResponse(callback, responsePacket );

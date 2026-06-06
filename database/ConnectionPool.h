@@ -16,13 +16,18 @@ class ConnectionPool{
         std::string lastErrorMessage;
         std::condition_variable cv;
         std::atomic<bool> stop{false};
-        
+        int connectionPoolTimeoutSeconds;
+        std::string host ;
+        int port;
+        std::string dbname;
+        std::string username;
+        std::string password;
     public:
         ~ConnectionPool();
         static ConnectionPool& getInstance();
         ConnectionPool(ConnectionPool const&) = delete;
         void operator=(ConnectionPool const&) = delete;
-        void Initialize( int poolSize );
+        void Initialize();
         PGconn* getConnection();
         void releaseConnection( PGconn* conn );
         std::string getErrorMessage();

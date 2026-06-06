@@ -25,7 +25,9 @@ void MetricsController::getMetrics(
     const HttpRequestPtr& req,
     std::function<void(const HttpResponsePtr&)>&& callback)
 {
-
+	if( threadName.empty() ){
+		threadName = "http-" + std::to_string( std::hash<std::thread::id>{}( std::this_thread::get_id() ) );
+	}
 	ResponsePacket responsePacket;
     responsePacket.MessagesInQueueCount         = service.getMessagesInQueueCount();
     responsePacket.SetWorkersCount              = service.getSetWorkersCount();

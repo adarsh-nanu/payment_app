@@ -20,7 +20,7 @@ void TransactionController::sendResponse(std::function<void(const HttpResponsePt
 	auto response = HttpResponse::newHttpJsonResponse(resp);
 	response->setStatusCode( responsePacket.httpStatus );
 	callback(response);
-	logger.log("Response [", responsePacket.success, "]sent back for ", responsePacket.id);
+	logger.log("Response [", responsePacket.success, "]sent back for ", responsePacket.id, " Comments[", ( !responsePacket.message.empty() )?responsePacket.message:"", "]");
 	return;
 }
 
@@ -29,6 +29,9 @@ void TransactionController::getTransaction(
     std::function<void(const HttpResponsePtr&)>&& callback,
     const std::string& id)
 {
+	if( threadName.empty() ){
+		threadName = "http-" + std::to_string( std::hash<std::thread::id>{}( std::this_thread::get_id() ) );
+	}
 	std::string txnStatus;
 
     Json::Value resp;
@@ -73,7 +76,9 @@ void TransactionController::createTransaction(
     std::function<void(const HttpResponsePtr&)>&& callback)
 {
     
-
+	if( threadName.empty() ){
+		threadName = "http-" + std::to_string( std::hash<std::thread::id>{}( std::this_thread::get_id() ) );
+	}
 	ResponsePacket responsePacket;
 	if( service.isStop() ){
 		responsePacket.httpStatus = k503ServiceUnavailable; 
@@ -90,6 +95,7 @@ void TransactionController::createTransaction(
 		responsePacket.message = "Invalid JSON request";
 		responsePacket.error_code = "INVALID_FORMAT";
 		sendResponse(callback, responsePacket);
+		logger.error( responsePacket.message, req->getJsonError());
 		return;
 	}
 

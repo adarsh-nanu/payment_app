@@ -1,9 +1,21 @@
 #include "Logger.h"
+#include "../util/ConfigManager.h"
 
 Logger& logger = Logger::getInstance();
+thread_local std::string threadName;
 
+Mode getMode(const std::string& Mode){
+    if( Mode == "NONE" ) return NONE;
+    if( Mode == "FATAL" ) return FATAL;
+    if( Mode == "ERROR" ) return ERROR;
+    if( Mode == "LOG" ) return LOG;
+    if( Mode == "DEBUG" ) return DEBUG;
+    return NONE;
+}
 void Logger::Initialize( std::string filename = std::string( "/tmp/a.log"), Mode _mode = LOG){
-    setmode = _mode;
+    ConfigManager configManager("/Users/adarshnanu/drogon/build/payment_app/config/appsettings.json");
+    setmode = getMode( configManager.getString("logLevel") );
+    //setmode = _mode;
     logfile.open(filename, std::ios::app );
     if( !logfile.is_open() ){
         throw std::runtime_error("Unable to open log file");

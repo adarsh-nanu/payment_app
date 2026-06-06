@@ -1,6 +1,7 @@
 #include <drogon/drogon.h>
 #include"Application.h"
 int main() {
+    threadName = "main";
     Application obj;
     obj.Initialize();
     //Set HTTP listener address and port
