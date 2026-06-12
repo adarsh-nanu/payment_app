@@ -1,6 +1,6 @@
 #include "TransactionService.h"
 #include "../exceptions/PaymentException.h"
-#include "exceptions/RetryableException.h"
+#include "../exceptions/RetryableException.h"
 #include <libpq-fe.h>
 #include <iostream>
 #include "../database/ConnectionPoolWrapper.h"
@@ -204,12 +204,16 @@ void TransactionService::Shutdown(){
     cv.notify_all();
 }
 
+void TransactionService::setMessagesInQueueCount(int size){
+    maxMessagesInQueue = size;
+}
+
 void TransactionService::Initialize() {
     std::cout<<"----Start-----";
     {
         ConfigManager configManager("/Users/adarshnanu/drogon/build/payment_app/config/appsettings.json");
         WorkerCount = configManager.getInt("workerCount");
-        maxMessagesInQueue = configManager.getInt("maxMessagesInQueue");
+        setMessagesInQueueCount( configManager.getInt("maxMessagesInQueue") );
     }
     for (int i = 0; i < WorkerCount; i++) {
         workers.emplace_back(&TransactionService::workerThread, this, i);

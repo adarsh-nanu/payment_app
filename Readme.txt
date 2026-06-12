@@ -1,0 +1,1 @@
+docker exec -it -e PGPASSWORD=postgres123 postgres-db psql -U postgres

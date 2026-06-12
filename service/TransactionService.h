@@ -57,6 +57,7 @@ public:
     static std::atomic<size_t> activeWorkers;
     size_t getActiveWorkerCount();
     int maxMessagesInQueue;
+    void setMessagesInQueueCount(int);
 };
 
 //extern std::atomic<int> TransactionService::activeWorkers;
