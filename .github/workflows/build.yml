@@ -22,8 +22,9 @@ jobs:
 
       - name: Configure
         run: |
-		cmake -B build
-		cmake --build build
+         cmake -B build
+         cmake --build build
+
       - name: Build
         run: |
           cd build
