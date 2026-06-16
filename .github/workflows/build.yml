@@ -22,10 +22,8 @@ jobs:
 
       - name: Configure
         run: |
-          mkdir build
-          cd build
-          cmake ..
-
+		cmake -B build
+		cmake --build build
       - name: Build
         run: |
           cd build
