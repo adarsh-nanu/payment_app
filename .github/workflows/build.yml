@@ -1,0 +1,32 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Show environment
+        run: |
+          uname -a
+          cmake --version
+          g++ --version
+
+      - name: Configure
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+
+      - name: Build
+        run: |
+          cd build
+          make
