@@ -25,7 +25,3 @@ jobs:
          cmake -B build
          cmake --build build
 
-      - name: Build
-        run: |
-          cd build
-          make
