@@ -34,6 +34,10 @@ jobs:
           find /usr -name "mysql.h" || true
           find /usr -name "libmysqlclient*" || true
 
+      - name: Show FindMySQL
+        run: |
+          sed -n '1,130p' /usr/lib/x86_64-linux-gnu/cmake/Drogon/FindMySQL.cmake
+
       - name: Configure
         run: cmake -B build
 
