@@ -28,6 +28,10 @@ jobs:
           sudo apt install -y uuid-dev
           sudo apt install -y libmysqlclient-dev
 
+      - name: Inspect DrogonConfig
+        run: |
+          sed -n '1,120p' /usr/lib/x86_64-linux-gnu/cmake/Drogon/DrogonConfig.cmake
+
       - name: MySQL diagnostics
         run: |
           ls -l /usr/include/mysql || true
