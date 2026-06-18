@@ -34,6 +34,11 @@ jobs:
           find /usr -name "mysql.h" || true
           find /usr -name "libmysqlclient*" || true
 
+      - name: Check MySQL libraries
+        run: |
+          ls -l /usr/lib/x86_64-linux-gnu/libmysql*
+          ls -l /usr/lib/x86_64-linux-gnu/libmaria*
+
       - name: Show FindMySQL
         run: |
           sed -n '1,130p' /usr/lib/x86_64-linux-gnu/cmake/Drogon/FindMySQL.cmake
