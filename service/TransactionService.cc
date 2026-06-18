@@ -211,7 +211,7 @@ void TransactionService::setMessagesInQueueCount(int size){
 void TransactionService::Initialize() {
     std::cout<<"----Start-----";
     {
-        ConfigManager configManager("/Users/adarshnanu/drogon/build/payment_app/config/appsettings.json");
+        ConfigManager& configManager = ConfigManager::getInstance();
         WorkerCount = configManager.getInt("workerCount");
         setMessagesInQueueCount( configManager.getInt("maxMessagesInQueue") );
     }
@@ -458,7 +458,7 @@ int TransactionService::getTransaction( std::string idempotency_id, std::string 
 void TransactionService::retryWorkerThread(){
     threadName = "worker-worker";
     {
-        ConfigManager configManager("/Users/adarshnanu/drogon/build/payment_app/config/appsettings.json");
+        ConfigManager& configManager = ConfigManager::getInstance();
         retryWorkerIntervalSeconds = configManager.getInt("retryWorkerIntervalSeconds");
     }
     while( !stop ){

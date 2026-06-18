@@ -3,7 +3,9 @@
 #include "../util/Logger.h"
 #include "json/json.h"
 
-ConfigManager::ConfigManager( std::string configName ): fileHandle( configName ){
+ConfigManager::ConfigManager(){
+    std::string configName = "..config/appsettings.json";
+    fileHandle = std::fstream( configName, std::ios::in );
     if ( fileHandle.is_open() ){
         fileContents.clear();
         std::string line;

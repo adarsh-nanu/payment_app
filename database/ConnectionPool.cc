@@ -40,7 +40,7 @@ ConnectionPool::~ConnectionPool(){
 }
 
 void ConnectionPool::Initialize(){
-    ConfigManager configManager("/Users/adarshnanu/drogon/build/payment_app/config/appsettings.json");
+    ConfigManager& configManager = ConfigManager::getInstance();
     poolSize = configManager.getInt("connectionPoolSize");
     connectionPoolTimeoutSeconds = configManager.getInt("connectionPoolTimeoutSeconds");
     host = configManager.getString("dbhostname");

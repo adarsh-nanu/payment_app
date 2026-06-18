@@ -20,6 +20,14 @@ jobs:
           cmake --version
           g++ --version
 
+      - name: Install dependencies
+        run: |
+          sudo apt update
+
+      - name: Show CMake packages
+        run: |
+          find /usr -name DrogonConfig.cmake 2>/dev/null
+
       - name: Configure
         run: |
          cmake -B build

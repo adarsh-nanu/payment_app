@@ -21,7 +21,7 @@ DROGON_TEST(MsgQueEnqueue)
     TransactionJob TJobj{"test_0001", "adarsh nanu", 15.66};
     int current_count = obj1.getMessagesInQueueCount();
     REQUIRE_THROWS(obj1.enqueue(TJobj));
-    ConfigManager cfg("/Users/adarshnanu/drogon/build/payment_app/config/appsettings.json");
+    ConfigManager& cfg = ConfigManager::getInstance();
     obj1.setMessagesInQueueCount( cfg.getInt("maxMessagesInQueue") );
     obj1.enqueue(TJobj);
     CHECK( obj1.getMessagesInQueueCount() == ( current_count+1 ) );

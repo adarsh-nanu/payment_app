@@ -13,7 +13,7 @@ Mode getMode(const std::string& Mode){
     return NONE;
 }
 void Logger::Initialize( std::string filename = std::string( "/tmp/a.log"), Mode _mode = LOG){
-    ConfigManager configManager("/Users/adarshnanu/drogon/build/payment_app/config/appsettings.json");
+    ConfigManager& configManager = ConfigManager::getInstance();
     setmode = getMode( configManager.getString("logLevel") );
     //setmode = _mode;
     logfile.open(filename, std::ios::app );

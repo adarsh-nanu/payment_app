@@ -24,7 +24,7 @@ void initShutDown( int signal ){
 }
 
 void Application::Initialize(){
-    logger.Initialize("/Users/adarshnanu/drogon/build/payment_app/build/app.log", DEBUG);
+    logger.Initialize("app.log", DEBUG);
     logger.log("Initializing..");
     try{
         connectionPool.Initialize();
