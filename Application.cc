@@ -4,6 +4,7 @@
 #include "controllers/TransactionController.h"
 #include<unistd.h>
 #include"database/ConnectionPool.h"
+#include<signal.h>
 
 void initShutDown( int signal ){
     TransactionService& service = TransactionService::getInstance();
