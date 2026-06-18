@@ -28,6 +28,12 @@ jobs:
           sudo apt install -y uuid-dev
           sudo apt install -y libmysqlclient-dev
 
+      - name: MySQL diagnostics
+        run: |
+          ls -l /usr/include/mysql || true
+          find /usr -name "mysql.h" || true
+          find /usr -name "libmysqlclient*" || true
+
       - name: Configure
         run: cmake -B build
 
