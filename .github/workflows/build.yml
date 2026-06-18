@@ -47,6 +47,20 @@ jobs:
         run: |
           sed -n '1,130p' /usr/lib/x86_64-linux-gnu/cmake/Drogon/FindMySQL.cmake
 
+      - name: Patch DrogonConfig
+        run: |
+          sudo sed -i '/find_dependency(MySQL)/s/^/#/' \
+            /usr/lib/x86_64-linux-gnu/cmake/Drogon/DrogonConfig.cmake
+
+          sudo sed -i '/find_dependency(Hiredis)/s/^/#/' \
+            /usr/lib/x86_64-linux-gnu/cmake/Drogon/DrogonConfig.cmake
+
+          sudo sed -i '/find_dependency(Brotli)/s/^/#/' \
+            /usr/lib/x86_64-linux-gnu/cmake/Drogon/DrogonConfig.cmake
+
+          sudo sed -i '/find_dependency(yaml-cpp)/s/^/#/' \
+            /usr/lib/x86_64-linux-gnu/cmake/Drogon/DrogonConfig.cmake
+
       - name: Configure
         run: cmake -B build
 
