@@ -27,6 +27,7 @@ jobs:
       - name: Show CMake packages
         run: |
           find /usr -name DrogonConfig.cmake 2>/dev/null
+          apt-cache search drogon || true
 
       - name: Configure
         run: |
