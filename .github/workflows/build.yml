@@ -27,25 +27,7 @@ jobs:
           sudo apt install -y libjsoncpp-dev
           sudo apt install -y uuid-dev
           sudo apt install -y libmysqlclient-dev
-
-      - name: Inspect DrogonConfig
-        run: |
-          sed -n '1,120p' /usr/lib/x86_64-linux-gnu/cmake/Drogon/DrogonConfig.cmake
-
-      - name: MySQL diagnostics
-        run: |
-          ls -l /usr/include/mysql || true
-          find /usr -name "mysql.h" || true
-          find /usr -name "libmysqlclient*" || true
-
-      - name: Check MySQL libraries
-        run: |
-          ls -l /usr/lib/x86_64-linux-gnu/libmysql*
-          ls -l /usr/lib/x86_64-linux-gnu/libmaria*
-
-      - name: Show FindMySQL
-        run: |
-          sed -n '1,130p' /usr/lib/x86_64-linux-gnu/cmake/Drogon/FindMySQL.cmake
+          sudo apt install -y libyaml-cpp-dev
 
       - name: Patch DrogonConfig
         run: |
@@ -58,8 +40,8 @@ jobs:
           sudo sed -i '/find_dependency(Brotli)/s/^/#/' \
             /usr/lib/x86_64-linux-gnu/cmake/Drogon/DrogonConfig.cmake
 
-          sudo sed -i '/find_dependency(yaml-cpp)/s/^/#/' \
-            /usr/lib/x86_64-linux-gnu/cmake/Drogon/DrogonConfig.cmake
+#          sudo sed -i '/find_dependency(yaml-cpp)/s/^/#/' \
+#            /usr/lib/x86_64-linux-gnu/cmake/Drogon/DrogonConfig.cmake
 
       - name: Configure
         run: cmake -B build
