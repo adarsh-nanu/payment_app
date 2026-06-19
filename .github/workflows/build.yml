@@ -48,9 +48,16 @@ jobs:
 
       - name: Understand app folder structure
         run: |
-          ls -l /home/runner/work/payment_app
-          ls -l /home/runner/work/
           ls -l /home/runner/
+          echo "--"
+          ls -l /home/runner/work/
+          echo "--"
+          ls -l /home/runner/work/payment_app
+          echo "--"
+          cd /home/runner/work/payment_app
+          echo "--"
+          ls -lrt
+          
 
       - name: Run tests
         run: |
