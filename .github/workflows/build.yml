@@ -46,12 +46,13 @@ jobs:
       - name: Build
         run: cmake --build build
 
-      - name: Run tests
-        run: |
-          ./build/test/payment_app_test
-
       - name: Understand app folder structure
         run: |
           ls -l /home/runner/work/payment_app
           ls -l /home/runner/work/
           ls -l /home/runner/
+
+      - name: Run tests
+        run: |
+          ./build/test/payment_app_test
+
