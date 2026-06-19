@@ -4,7 +4,7 @@
 #include "json/json.h"
 
 ConfigManager::ConfigManager(){
-    std::string configName = "../config/appsettings.json";
+    std::string configName = "../../config/appsettings.json";
     fileHandle = std::fstream( configName, std::ios::in );
     if ( fileHandle.is_open() ){
         fileContents.clear();
