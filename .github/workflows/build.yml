@@ -48,7 +48,7 @@ jobs:
 
       - name: Understand app folder structure
         run: |
-          find home/runner/work/ -name "*" -print
+          find /home/runner/work/ -name "*" -print
           ls -l /home/runner/
           echo "-1-"
           ls -l /home/runner/work/
