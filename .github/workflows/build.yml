@@ -46,23 +46,6 @@ jobs:
       - name: Build
         run: cmake --build build
 
-      - name: Understand app folder structure
-        run: |
-          find /  home/runner/work/ -name "*" -print
-          ls -l /home/runner/
-          echo "-1-"
-          ls -l /home/runner/work/
-          echo "-2-"
-          ls -l /home/runner/work/payment_app
-          echo "-3-"
-          cd /home/runner/work/payment_app
-          echo "-4-"
-          ls -lrt
-          echo "-5-"
-          pwd
-          echo "-6-"
-          
-
       - name: Run tests
         run: |
           cd build/test
