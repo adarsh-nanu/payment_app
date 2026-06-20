@@ -32,7 +32,7 @@ class Logger{
         static Logger obj;
         return obj;
     }
-    void Initialize( std::string, Mode);
+    void Initialize();
     void Shutdown();
     template<typename... T>
     void log(T&&... t);

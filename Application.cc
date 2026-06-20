@@ -25,7 +25,7 @@ void initShutDown( int signal ){
 }
 
 void Application::Initialize(){
-    logger.Initialize("app.log", DEBUG);
+    logger.Initialize();
     logger.log("Initializing..");
     try{
         connectionPool.Initialize();

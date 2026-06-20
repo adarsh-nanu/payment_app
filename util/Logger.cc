@@ -12,11 +12,14 @@ Mode getMode(const std::string& Mode){
     if( Mode == "DEBUG" ) return DEBUG;
     return NONE;
 }
-void Logger::Initialize( std::string filename = std::string( "/tmp/a.log"), Mode _mode = LOG){
+void Logger::Initialize(){
     ConfigManager& configManager = ConfigManager::getInstance();
+    std::string logfilename = std::getenv("PAYMENT_APP_LOG");
+    if( logfilename.c_str() == nullptr)
+        throw("ERROR: Invalid log file path");
     setmode = getMode( configManager.getString("logLevel") );
     //setmode = _mode;
-    logfile.open(filename, std::ios::app );
+    logfile.open(logfilename, std::ios::app );
     if( !logfile.is_open() ){
         throw std::runtime_error("Unable to open log file");
     }
