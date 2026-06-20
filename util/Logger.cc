@@ -14,11 +14,10 @@ Mode getMode(const std::string& Mode){
 }
 void Logger::Initialize(){
     ConfigManager& configManager = ConfigManager::getInstance();
-    std::string logfilename = std::getenv("PAYMENT_APP_LOG");
-    if( logfilename.c_str() == nullptr)
-        throw("ERROR: Invalid log file path");
+    const char* logfilename = std::getenv("PAYMENT_APP_LOG");
+    if( logfilename == nullptr)
+        throw std::runtime_error("ERROR: Invalid log file path");
     setmode = getMode( configManager.getString("logLevel") );
-    //setmode = _mode;
     logfile.open(logfilename, std::ios::app );
     if( !logfile.is_open() ){
         throw std::runtime_error("Unable to open log file");
@@ -37,7 +36,6 @@ void Logger::Shutdown(){
 }
 
 bool Logger::changeLoggingMode(int _mode){
-    //std::lock_guard<std::mutex> lock(mtx);
     bool changed = false;
     logger.log("Current mode: ", setmode);
     switch( _mode){

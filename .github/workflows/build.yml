@@ -41,13 +41,11 @@ jobs:
             /usr/lib/x86_64-linux-gnu/cmake/Drogon/DrogonConfig.cmake
 
       - name: Configure
-        run: |
-          pwd
+        run:
           cmake -B build
 
       - name: Build
-        run: |
-          pwd
+        run:
           cmake --build build
 
       - name: Run tests
@@ -58,4 +56,3 @@ jobs:
           pwd
           cd build/test
           ./payment_app_test
-

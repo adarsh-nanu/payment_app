@@ -8,7 +8,6 @@ ConfigManager::ConfigManager(){
     if( configFile == nullptr)
         throw std::runtime_error("ERROR Unable to find config file");
 
-    //std::string configName = "../../config/appsettings.json";
     fileHandle = std::fstream( configFile, std::ios::in );
     if ( fileHandle.is_open() ){
         fileContents.clear();
