@@ -51,6 +51,9 @@ jobs:
           cmake --build build
 
       - name: Run tests
+        env:
+            PAYMENT_APP_CONFIG: ${{ github.workspace}}/config/appsettings.json
+            PAYMENT_APP_LOG: ${{github.workspace}}/log/payment_app.log
         run: |
           pwd
           cd build/test

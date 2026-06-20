@@ -4,8 +4,12 @@
 #include "json/json.h"
 
 ConfigManager::ConfigManager(){
-    std::string configName = "../../config/appsettings.json";
-    fileHandle = std::fstream( configName, std::ios::in );
+    const char* configFile = std::getenv("PAYMENT_APP_CONFIG");
+    if( configFile == nullptr)
+        throw std::runtime_error("ERROR Unable to find config file");
+
+    //std::string configName = "../../config/appsettings.json";
+    fileHandle = std::fstream( configFile, std::ios::in );
     if ( fileHandle.is_open() ){
         fileContents.clear();
         std::string line;
@@ -24,13 +28,13 @@ ConfigManager::ConfigManager(){
         {
             throw std::runtime_error(
                 "Invalid json contents in " +
-                configName +
+                std::string(configFile) +
                 " : " +
                 errors);
         }
     }    
     else{
-        throw std::runtime_error( "Unable to open file " + configName );
+        throw std::runtime_error( "Unable to open file " + std::string(configFile) );
     }
 }
 
