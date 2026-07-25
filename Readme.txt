@@ -41,6 +41,27 @@ Run 'docker ps' to make sure it is running.
 To connect to the container to check the database, use the below command,
 docker exec -it postgres-db psql -U postgres -d paymentdb
 
+At the moment the application use only one table. Create the table with the below.
+CREATE TABLE transactions
+(
+    id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(100),
+    amount NUMERIC(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    idempotency_key VARCHAR(100) NOT NULL UNIQUE,
+    state VARCHAR(20),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    retry INTEGER DEFAULT 0,
+    last_error CHAR(100)
+);
+
+Check the table
+\d transactions
+
+After the first time, PostgreSQL can be started by running
+docker start postgres-db
+
+
 The below environment variables need to be set for the applictaion to work. You can find these contents in appsettings.json
 {
     "workerCount": 1,
@@ -55,4 +76,6 @@ The below environment variables need to be set for the applictaion to work. You 
     "dbusername": "postgres",
     "dbpassword": "postgres123"
 }
+
+
 
