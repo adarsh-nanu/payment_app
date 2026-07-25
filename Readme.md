@@ -2,7 +2,7 @@
 
 > A production-inspired asynchronous payment processing service built with **C++20**, **Drogon Framework**, and **PostgreSQL**.
 
-![Architecture](Payment_app%201.0.png)
+![Architecture](Payment_app%201.0.jpg)
 
 ---
 
